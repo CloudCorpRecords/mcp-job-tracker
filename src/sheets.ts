@@ -10,21 +10,32 @@ export interface Application {
   notes: string;
 }
 
-const HEADERS = ["date","company","role","channel","status","comp","notes"];
+const HEADERS = ["date", "company", "role", "channel", "status", "comp", "notes"] as const;
 
-export async function fetchApplications(): Promise<Application[]> {
-  const auth = new google.auth.GoogleAuth({
-    credentials: JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_JSON || "{}"),
-    scopes: ["https://www.googleapis.com/auth/spreadsheets.readonly"],
+function getAuth(scopes: string[]) {
+  const raw = process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
+  if (!raw) throw new Error("GOOGLE_SERVICE_ACCOUNT_JSON env var is not set");
+  return new google.auth.GoogleAuth({
+    credentials: JSON.parse(raw),
+    scopes,
   });
-  const sheets = google.sheets({ version: "v4", auth });
-  const res = await sheets.spreadsheets.values.get({
-    spreadsheetId: process.env.SHEET_ID,
-    range: "Sheet1!A2:G1000",
+}
+
+export async function fetchApplications(
+  sheetId = process.env.SHEET_ID,
+  range = "Sheet1!A2:G2000"
+): Promise<Application[]> {
+  if (!sheetId) throw new Error("SHEET_ID env var is not set");
+  const sheets = google.sheets({
+    version: "v4",
+    auth: getAuth(["https://www.googleapis.com/auth/spreadsheets.readonly"]),
   });
-  return (res.data.values || []).map((row) => {
-    const app: any = {};
-    HEADERS.forEach((h, i) => (app[h] = (row[i] || "").trim()));
-    return app as Application;
-  }).filter((a) => a.company);
+  const res = await sheets.spreadsheets.values.get({ spreadsheetId: sheetId, range });
+  return (res.data.values || [])
+    .map((row) => {
+      const app = {} as Record<string, string>;
+      HEADERS.forEach((h, i) => (app[h] = String(row[i] ?? "").trim()));
+      return app as unknown as Application;
+    })
+    .filter((a) => a.company.length > 0);
 }

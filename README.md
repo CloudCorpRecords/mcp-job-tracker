@@ -81,13 +81,19 @@ Claude Desktop config:
 }
 ```
 
-## Build order (suggested for AI implementation)
+## Status: v1 built and tested
 
-1. **sheets.ts** — fetch + parse rows into `Application[]` (handle short rows, trim whitespace)
-2. **search_applications** — case-insensitive substring match across company/role/notes
-3. **stale_leads** — date math on the `date` column, default 14 days
-4. **reply_status** — Gmail API thread search per company (batch + cache; this is the hard one, do it last)
-5. **Streamable HTTP transport** — so hosted clients can use it
+All four tools are implemented, typechecked, and covered by tests (`npm test` — 7/7 passing):
+
+- `search_applications` — substring search across company/role/notes, optional status filter
+- `stale_leads` — contacted apps older than N days (default 14), oldest first
+- `reply_status` — Gmail correlation per company (best-effort name match, 90d lookback)
+- `pipeline_stats` — totals by status/channel, contacted count, reply rate, weekly volume
+
+Run the server: `npm run dev` (needs `SHEET_ID` + `GOOGLE_SERVICE_ACCOUNT_JSON`).
+Run the tests: `npm test`. Typecheck: `npx tsc --noEmit`.
+
+Gmail note: `reply_status` needs Gmail read access. For a personal Gmail account, use OAuth2 user credentials — set `GMAIL_OAUTH_TOKEN_JSON`, `GMAIL_OAUTH_CLIENT_ID`, `GMAIL_OAUTH_CLIENT_SECRET` (see `.env.example`). Service accounts only work with Google Workspace domain-wide delegation.
 
 ## Tech stack
 
